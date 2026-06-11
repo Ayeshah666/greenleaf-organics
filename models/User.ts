@@ -1,0 +1,48 @@
+import mongoose, { Schema, Document } from 'mongoose';
+import bcrypt from 'bcryptjs';
+
+export interface IUser extends Document {
+  name: string;
+  email: string;
+  password: string;
+  role: 'user' | 'admin';
+  address?: {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+    country: string;
+  };
+  createdAt: Date;
+  comparePassword(candidatePassword: string): Promise<boolean>;
+}
+
+const UserSchema = new Schema<IUser>(
+  {
+    name: { type: String, required: true, trim: true },
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    password: { type: String, required: true, minlength: 6 },
+    role: { type: String, enum: ['user', 'admin'], default: 'user' },
+    address: {
+      street: String,
+      city: String,
+      state: String,
+      zip: String,
+      country: String,
+    },
+  },
+  { timestamps: true }
+);
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(UserSchema as any).pre('save', async function (this: IUser, next: () => void) {
+  if (!this.isModified('password')) return next();
+  this.password = await bcrypt.hash(this.password, 12);
+  next();
+});
+
+UserSchema.methods.comparePassword = async function (candidatePassword: string) {
+  return bcrypt.compare(candidatePassword, this.password);
+};
+
+export default mongoose.models.User || mongoose.model<IUser>('User', UserSchema);
