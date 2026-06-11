@@ -1,15 +1,9 @@
+'use client';
 import Link from 'next/link';
 import Image from 'next/image';
 import ProductCard from '@/components/product/ProductCard';
-import { connectDB } from '@/lib/mongodb';
-import Product from '@/models/Product';
+import { useEffect, useState } from 'react';
 import { Leaf, Truck, Shield, RefreshCw, ArrowRight } from 'lucide-react';
-
-async function getFeaturedProducts() {
-  await connectDB();
-  const products = await Product.find({ featured: true }).limit(4).lean();
-  return JSON.parse(JSON.stringify(products));
-}
 
 const categories = [
   { name: 'Seeds', emoji: '🌱', desc: 'Heirloom & open-pollinated', href: '/products?category=Seeds', color: '#e8f5e9' },
@@ -20,14 +14,30 @@ const categories = [
   { name: 'Planters', emoji: '🏺', desc: 'Artisan & sustainable', href: '/products?category=Planters', color: '#fce4ec' },
 ];
 
-export default async function HomePage() {
-  const featured = await getFeaturedProducts();
+interface Product {
+  _id: string;
+  name: string;
+  price: number;
+  image: string;
+  category: string;
+  stock: number;
+  badge?: string;
+  featured?: boolean;
+}
+
+export default function HomePage() {
+  const [featured, setFeatured] = useState<Product[]>([]);
+
+  useEffect(() => {
+    fetch('/api/products?featured=true&limit=4')
+      .then((r) => r.json())
+      .then((d) => setFeatured(d.products || []));
+  }, []);
 
   return (
     <div>
       {/* HERO */}
       <section className="relative overflow-hidden" style={{ background: 'var(--forest)', minHeight: '88vh', display: 'flex', alignItems: 'center' }}>
-        {/* Background texture */}
         <div className="absolute inset-0 opacity-10" style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M40 8 C55 25 65 45 40 72 C15 45 25 25 40 8Z' fill='none' stroke='%23fff' stroke-width='1'/%3E%3C/svg%3E")`,
           backgroundSize: '80px 80px',
@@ -52,8 +62,6 @@ export default async function HomePage() {
                 Staff Picks
               </Link>
             </div>
-
-            {/* Trust badges */}
             <div className="flex flex-wrap gap-6 mt-10">
               {[
                 { icon: '🌱', text: 'USDA Organic' },
@@ -67,7 +75,6 @@ export default async function HomePage() {
             </div>
           </div>
 
-          {/* Hero image grid */}
           <div className="hidden lg:grid grid-cols-2 gap-3">
             {[
               'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400&q=80',
@@ -138,11 +145,26 @@ export default async function HomePage() {
             View all <ArrowRight size={14} />
           </Link>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {featured.map((p: {_id: string; name: string; price: number; image: string; category: string; stock: number; badge?: string; featured?: boolean}) => (
-            <ProductCard key={p._id} product={p} />
-          ))}
-        </div>
+        {featured.length === 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-sm overflow-hidden border border-gray-100 animate-pulse">
+                <div className="h-48 bg-gray-200" />
+                <div className="p-4 space-y-2">
+                  <div className="h-3 bg-gray-200 rounded w-1/3" />
+                  <div className="h-4 bg-gray-200 rounded w-3/4" />
+                  <div className="h-8 bg-gray-200 rounded w-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {featured.map((p) => (
+              <ProductCard key={p._id} product={p} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* STORY BANNER */}
